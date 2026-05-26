@@ -1,0 +1,388 @@
+"""
+Phase 1.3: RAG (Retrieval-Augmented Generation) Pipeline
+
+Implements the core RAG workflow:
+1. Query embedding
+2. Vector store retrieval with MMR
+3. Prompt construction with retrieved context
+4. LLM response generation
+5. Response validation
+"""
+
+import logging
+from typing import List, Optional
+
+import openai
+import numpy as np
+from groq import Groq
+from sentence_transformers import SentenceTransformer
+
+from config import settings
+from app.phase1.subphase_1_2_chunking_embedding.vector_store import VectorStore
+
+logger = logging.getLogger(__name__)
+
+
+class RAGPipeline:
+    """
+    Retrieval-Augmented Generation pipeline for MF FAQ Assistant.
+
+    Workflow:
+        Query → Embed → Retrieve → Construct Prompt → Generate → Validate
+    """
+
+    def __init__(self):
+        self.vector_store = VectorStore()
+        
+        # Initialize LLM client based on provider (Groq recommended)
+        if settings.llm_provider == "groq":
+            if not settings.groq_api_key or settings.groq_api_key == "your_groq_api_key_here":
+                raise ValueError(
+                    "GROQ_API_KEY is not set. Add your Groq API key to .env file.\n"
+                    "Get one at: https://console.groq.com/keys"
+                )
+            self.llm_client = Groq(api_key=settings.groq_api_key)
+            self.llm_model = settings.llm_model
+            logger.info(f"LLM Provider: Groq ({self.llm_model})")
+        elif settings.llm_provider == "openai":
+            if not settings.openai_api_key or settings.openai_api_key == "your_openai_api_key_here":
+                raise ValueError(
+                    "OPENAI_API_KEY is not set. Add your OpenAI API key to .env file."
+                )
+            self.llm_client = openai.OpenAI(api_key=settings.openai_api_key)
+            self.llm_model = settings.llm_model
+            logger.info(f"LLM Provider: OpenAI ({self.llm_model})")
+        else:
+            raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
+        
+        # Initialize BGE embedding model (local, free)
+        # (Groq doesn't provide embedding services, so we use local BGE instead of OpenAI)
+        logger.info(f"Loading BGE embedding model for queries...")
+        self.embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
+        self.embedding_dim = self.embedding_model.get_sentence_embedding_dimension()
+        logger.info(f"Embeddings: BGE-Small-EN ({self.embedding_dim} dimensions, local)")
+
+        # Prompt template
+        self.system_prompt = self._build_system_prompt()
+
+    def query(self, user_query: str, scheme_filter: Optional[str] = None) -> dict:
+        """
+        Process a user query through the RAG pipeline.
+
+        Args:
+            user_query: The user's question.
+            scheme_filter: Optional scheme name to filter results.
+
+        Returns:
+            Dictionary with 'response', 'retrieved_chunks', and 'metadata'.
+        """
+        logger.info(f"Processing query: {user_query}")
+
+        # Step 1: Embed the query
+        query_embedding = self._embed_query(user_query)
+
+        # Step 2: Retrieve relevant chunks from vector store
+        where_filter = None
+        if scheme_filter:
+            where_filter = {"scheme_name": scheme_filter}
+
+        retrieval_results = self.vector_store.query_with_mmr(
+            query_embedding=query_embedding,
+            n_results=settings.rag_top_k,
+            fetch_factor=2,
+        )
+
+        retrieved_chunks = self._extract_chunks(retrieval_results)
+
+        # Step 3: Construct prompt with retrieved context
+        prompt = self._construct_prompt(user_query, retrieved_chunks)
+
+        # Step 4: Generate response using LLM
+        response = self._generate_response(prompt, user_query)
+
+        # Step 5: Validate response
+        validation = self._validate_response(response, user_query)
+
+        return {
+            "response": response,
+            "retrieved_chunks": retrieved_chunks,
+            "validation": validation,
+            "metadata": {
+                "query": user_query,
+                "scheme_filter": scheme_filter,
+                "chunks_retrieved": len(retrieved_chunks),
+                "llm_model": self.llm_model,
+            },
+        }
+
+    def _embed_query(self, query: str) -> List[float]:
+        """
+        Embed the user query using local BGE model.
+        
+        Benefits:
+        - No API key required (free, local)
+        - No rate limits or latency
+        - Fast CPU inference
+
+        Args:
+            query: User's question.
+
+        Returns:
+            Query embedding vector.
+        """
+        # Encode query to embedding
+        embedding = self.embedding_model.encode(
+            query,
+            convert_to_numpy=True
+        )
+        
+        return embedding.tolist()
+
+    def _extract_chunks(self, retrieval_results: dict) -> List[dict]:
+        """
+        Extract chunks from retrieval results.
+
+        Args:
+            retrieval_results: Results from vector store query.
+
+        Returns:
+            List of chunk dictionaries with text and metadata.
+        """
+        chunks = []
+
+        if not retrieval_results.get("ids") or not retrieval_results["ids"][0]:
+            logger.warning("No chunks retrieved from vector store")
+            return chunks
+
+        for i in range(len(retrieval_results["ids"][0])):
+            chunk = {
+                "text": retrieval_results["documents"][0][i],
+                "metadata": retrieval_results["metadatas"][0][i],
+                "distance": retrieval_results["distances"][0][i],
+            }
+            chunks.append(chunk)
+
+        logger.info(f"Retrieved {len(chunks)} chunks from vector store")
+        return chunks
+
+    def _construct_prompt(self, query: str, chunks: List[dict]) -> str:
+        """
+        Construct the prompt for the LLM with retrieved context.
+
+        Args:
+            query: User's question.
+            chunks: List of retrieved chunks.
+
+        Returns:
+            Complete prompt string.
+        """
+        # Build context from chunks
+        context_parts = []
+        for idx, chunk in enumerate(chunks, 1):
+            scheme = chunk["metadata"].get("scheme_name", "Unknown")
+            context_parts.append(
+                f"[Source {idx}: {scheme}]\n{chunk['text']}"
+            )
+
+        context = "\n\n".join(context_parts)
+
+        # Construct full prompt
+        prompt = f"""{self.system_prompt}
+
+CONTEXT (from HDFC Mutual Fund scheme documents):
+{context}
+
+USER QUESTION: {query}
+
+INSTRUCTIONS:
+1. Answer the question using ONLY the information from the CONTEXT above.
+2. If the answer is not in the CONTEXT, say: "I don't have that information in my current data. Please check the official HDFC Mutual Fund website or Groww for the latest details."
+3. Do NOT provide investment advice or recommendations.
+4. Be factual, concise, and cite the scheme name(s) referenced.
+5. If the question asks for advice (e.g., "should I invest", "which is better"), respond: "I can only provide factual information from scheme documents, not investment advice. Please consult a SEBI-registered advisor for personalized recommendations."
+
+ANSWER:"""
+
+        return prompt
+
+    def _generate_response(self, prompt: str, original_query: str) -> str:
+        """
+        Generate response using LLM (Groq or OpenAI).
+
+        Args:
+            prompt: Constructed prompt with context.
+            original_query: Original user question (for logging).
+
+        Returns:
+            LLM-generated response.
+        """
+        try:
+            if settings.llm_provider == "groq":
+                # Groq API
+                response = self.llm_client.chat.completions.create(
+                    model=self.llm_model,
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=settings.llm_temperature,
+                    max_tokens=settings.llm_max_tokens,
+                )
+                answer = response.choices[0].message.content.strip()
+                logger.info(f"Generated response using Groq ({len(answer)} chars)")
+                
+            elif settings.llm_provider == "openai":
+                # OpenAI API
+                response = self.llm_client.chat.completions.create(
+                    model=self.llm_model,
+                    messages=[
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=settings.llm_temperature,
+                    max_tokens=settings.llm_max_tokens,
+                )
+                answer = response.choices[0].message.content.strip()
+                logger.info(f"Generated response using OpenAI ({len(answer)} chars)")
+            else:
+                raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
+            
+            return answer
+
+        except Exception as e:
+            logger.error(f"Unexpected error during response generation: {e}")
+            return "Sorry, I encountered an error while processing your question. Please try again."
+
+    def _validate_response(self, response: str, query: str) -> dict:
+        """
+        Validate the generated response for compliance.
+
+        Args:
+            response: Generated response.
+            query: Original user question.
+
+        Returns:
+            Dictionary with validation results.
+        """
+        validation = {
+            "passed": True,
+            "warnings": [],
+        }
+
+        # Check for advisory language (Phase 4 will enhance this)
+        advisory_keywords = [
+            "should invest", "buy", "sell", "recommend", "best",
+            "good choice", "better option", "you must", "avoid",
+        ]
+
+        response_lower = response.lower()
+        for keyword in advisory_keywords:
+            if keyword in response_lower:
+                # Check if it's in a negative context (e.g., "I cannot recommend")
+                if "cannot" not in response_lower and "don't" not in response_lower:
+                    validation["warnings"].append(
+                        f"Potential advisory language detected: '{keyword}'"
+                    )
+                    validation["passed"] = False
+
+        # Check response length
+        if len(response) > 500:
+            validation["warnings"].append(
+                f"Response is long ({len(response)} chars). Consider being more concise."
+            )
+
+        # Check if response indicates missing information
+        if "don't have that information" in response.lower():
+            validation["warnings"].append(
+                "Response indicates information not found in corpus"
+            )
+
+        return validation
+
+    def _build_system_prompt(self) -> str:
+        """
+        Build the system prompt for the LLM.
+
+        Returns:
+            System prompt string.
+        """
+        return """You are a factual Mutual Fund FAQ Assistant that provides information ONLY from official HDFC Mutual Fund scheme documents.
+
+RULES:
+1. Answer questions using ONLY the provided context from scheme documents.
+2. NEVER provide investment advice, recommendations, or opinions.
+3. If information is not in the context, clearly state that you don't have it.
+4. Always be factual, precise, and cite the specific scheme name.
+5. If asked about performance, returns, or comparisons, provide only factual data from documents.
+6. If asked for advice (e.g., "should I invest", "which fund is better"), politely decline and suggest consulting a SEBI-registered advisor.
+7. Do NOT speculate or provide information not present in the context.
+
+PERSONALITY:
+- Professional, helpful, and concise
+- Factual and objective
+- Clear about limitations of your knowledge"""
+
+
+def run_phase_1_3_test():
+    """
+    Test the RAG pipeline with sample queries.
+
+    Returns:
+        List of test results.
+    """
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+    # Initialize RAG pipeline
+    rag = RAGPipeline()
+
+    # Test queries
+    test_queries = [
+        {
+            "query": "What is the expense ratio of HDFC Mid-Cap Fund?",
+            "scheme_filter": "HDFC Mid-Cap Fund",
+        },
+        {
+            "query": "What is the minimum SIP amount for HDFC ELSS Tax Saver Fund?",
+            "scheme_filter": "HDFC ELSS Tax Saver Fund",
+        },
+        {
+            "query": "What is the exit load for HDFC Equity Fund?",
+            "scheme_filter": "HDFC Equity Fund",
+        },
+    ]
+
+    results = []
+
+    print("\n" + "=" * 80)
+    print("PHASE 1.3: RAG Pipeline Testing")
+    print("=" * 80)
+
+    for idx, test in enumerate(test_queries, 1):
+        print(f"\n{'=' * 80}")
+        print(f"Test {idx}/{len(test_queries)}")
+        print(f"{'=' * 80}")
+        print(f"Query: {test['query']}")
+        print(f"Filter: {test['scheme_filter']}")
+        print("-" * 80)
+
+        result = rag.query(test["query"], test["scheme_filter"])
+
+        print(f"\nResponse:\n{result['response']}")
+        print(f"\nRetrieved {len(result['retrieved_chunks'])} chunks")
+        print(f"Validation: {result['validation']}")
+
+        results.append(result)
+
+    print("\n" + "=" * 80)
+    print("PHASE 1.3 TESTING COMPLETE")
+    print("=" * 80)
+
+    return results
+
+
+if __name__ == "__main__":
+    results = run_phase_1_3_test()

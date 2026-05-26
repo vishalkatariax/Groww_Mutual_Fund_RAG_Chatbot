@@ -1,0 +1,40 @@
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+dist/
+*.egg
+*.egg-info/
+
+# Virtual environments & secrets
+.env
+.env.bak*
+.venv
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Frontend dependencies
+app/frontend/node_modules/
+app/frontend/dist/
+app/frontend/.vite/
+*.local
+
+# Data files
+data/raw/*.html
+data/processed/*.json
+data/chroma_db/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

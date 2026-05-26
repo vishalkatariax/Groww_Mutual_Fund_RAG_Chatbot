@@ -1,0 +1,25 @@
+name: Deploy Backend to Railway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'config.py'
+      - 'requirements.txt'
+      - 'railway.toml'
+      - 'railway.json'
+      - 'nixpacks.json'
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        uses: amilavps/action-railway@v1
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          railway_args: up

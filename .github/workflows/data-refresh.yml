@@ -1,0 +1,56 @@
+# .github/workflows/data-refresh.yml
+name: Refresh MF Corpus Data
+
+on:
+  schedule:
+    # Run every Monday at 6:00 AM UTC (11:30 AM IST)
+    - cron: '0 6 * * 1'
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      force_refresh:
+        description: 'Force refresh even if no changes detected'
+        required: false
+        default: 'false'
+
+jobs:
+  refresh-corpus:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          
+      - name: Run data ingestion
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python scripts/run_phase_1_complete.py
+          
+      - name: Check for changes
+        run: |
+          git diff --exit-code data/processed/ || echo "CHANGES_DETECTED=true" >> $GITHUB_ENV
+          
+      - name: Create PR if significant changes
+        if: env.CHANGES_DETECTED == 'true' || github.event.inputs.force_refresh == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "🔄 Auto-refresh: Updated corpus data"
+          title: "🔄 Auto-refresh: Corpus data updated"
+          body: |
+            Automated corpus refresh detected. Please review changes:
+            - Source: groww.in
+            - Changes: See diff for details
+          branch: auto-refresh/corpus-update
+          add-paths: |
+            data/
+
