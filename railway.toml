@@ -1,6 +1,9 @@
 [build]
 builder = "railpack"
 
+[start]
+cmd = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+
 # Environment variables - Set these in Railway dashboard under Variables
 # GROQ_API_KEY: Your Groq API key (get from https://console.groq.com/keys)
 # OPENAI_API_KEY: (optional) Your OpenAI API key if using OpenAI provider
