@@ -3,8 +3,8 @@ name: Refresh MF Corpus Data
 
 on:
   schedule:
-    # Run every Monday at 6:00 AM UTC (11:30 AM IST)
-    - cron: '0 6 * * 1'
+    # Run every Monday at 4:30 AM UTC (10:00 AM IST)
+    - cron: '30 4 * * 1'
   workflow_dispatch:  # Allow manual trigger
     inputs:
       force_refresh:
