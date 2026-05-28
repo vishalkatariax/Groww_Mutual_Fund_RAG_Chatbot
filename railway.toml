@@ -1,2 +1,6 @@
 [build]
 builder = "railpack"
+
+# Environment variables - Set these in Railway dashboard under Variables
+# GROQ_API_KEY: Your Groq API key (get from https://console.groq.com/keys)
+# OPENAI_API_KEY: (optional) Your OpenAI API key if using OpenAI provider

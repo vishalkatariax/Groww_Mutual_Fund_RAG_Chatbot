@@ -23,9 +23,33 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
-# Initialize pipelines
-rag_pipeline = RAGPipeline()
-compliance_pipeline = CompliancePipeline()
+# Lazy initialization of pipelines (deferred until first use)
+_rag_pipeline = None
+_compliance_pipeline = None
+
+
+def get_rag_pipeline():
+    """Lazy load RAG pipeline on first use."""
+    global _rag_pipeline
+    if _rag_pipeline is None:
+        try:
+            _rag_pipeline = RAGPipeline()
+        except ValueError as e:
+            logger.error(f"Failed to initialize RAG pipeline: {e}")
+            raise
+    return _rag_pipeline
+
+
+def get_compliance_pipeline():
+    """Lazy load compliance pipeline on first use."""
+    global _compliance_pipeline
+    if _compliance_pipeline is None:
+        try:
+            _compliance_pipeline = CompliancePipeline()
+        except Exception as e:
+            logger.error(f"Failed to initialize compliance pipeline: {e}")
+            raise
+    return _compliance_pipeline
 
 
 @router.post(
@@ -57,6 +81,7 @@ async def chat(request: ChatRequest):
         logger.info(f"[{request_id}] Processing query: {request.query[:50]}...")
         
         # Step 1: Input guardrails validation
+        compliance_pipeline = get_compliance_pipeline()
         is_valid, message, sanitized_query = compliance_pipeline.process_query(request.query)
         
         if not is_valid:
@@ -129,6 +154,7 @@ async def chat(request: ChatRequest):
         
         else:
             # Factual query - route to RAG pipeline
+            rag_pipeline = get_rag_pipeline()
             rag_result = rag_pipeline.query(sanitized_query)
             answer = rag_result.get("response", "")
             source_url = None
