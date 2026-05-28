@@ -93,12 +93,21 @@ class RAGPipeline:
         )
 
         retrieved_chunks = self._extract_chunks(retrieval_results)
+        
+        if not retrieved_chunks:
+            logger.warning(f"No chunks retrieved for query: {user_query}")
+            logger.warning(f"Retrieval results: {retrieval_results}")
 
         # Step 3: Construct prompt with retrieved context
         prompt = self._construct_prompt(user_query, retrieved_chunks)
+        logger.debug(f"Constructed prompt (first 500 chars): {prompt[:500]}...")
 
         # Step 4: Generate response using LLM
         response = self._generate_response(prompt, user_query)
+        
+        if not response:
+            logger.error(f"LLM returned empty response for query: {user_query}")
+            response = "I encountered an issue generating a response. Please try again."
 
         # Step 5: Validate response
         validation = self._validate_response(response, user_query)
@@ -251,6 +260,7 @@ ANSWER:"""
         try:
             if settings.llm_provider == "groq":
                 # Groq API
+                logger.info(f"Calling Groq API with model: {self.llm_model}")
                 response = self.llm_client.chat.completions.create(
                     model=self.llm_model,
                     messages=[
@@ -260,11 +270,22 @@ ANSWER:"""
                     temperature=settings.llm_temperature,
                     max_tokens=settings.llm_max_tokens,
                 )
+                
+                if not response or not response.choices or not response.choices[0].message:
+                    logger.error(f"Invalid Groq response structure: {response}")
+                    return "Error: Invalid response from language model. Please try again."
+                
                 answer = response.choices[0].message.content.strip()
+                if not answer:
+                    logger.warning("Groq returned empty content")
+                    return "I couldn't generate a proper response. Please try rephrasing your question."
+                
                 logger.info(f"Generated response using Groq ({len(answer)} chars)")
+                return answer
                 
             elif settings.llm_provider == "openai":
                 # OpenAI API
+                logger.info(f"Calling OpenAI API with model: {self.llm_model}")
                 response = self.llm_client.chat.completions.create(
                     model=self.llm_model,
                     messages=[
@@ -274,16 +295,26 @@ ANSWER:"""
                     temperature=settings.llm_temperature,
                     max_tokens=settings.llm_max_tokens,
                 )
+                
+                if not response or not response.choices or not response.choices[0].message:
+                    logger.error(f"Invalid OpenAI response structure: {response}")
+                    return "Error: Invalid response from language model. Please try again."
+                
                 answer = response.choices[0].message.content.strip()
+                if not answer:
+                    logger.warning("OpenAI returned empty content")
+                    return "I couldn't generate a proper response. Please try rephrasing your question."
+                
                 logger.info(f"Generated response using OpenAI ({len(answer)} chars)")
+                return answer
             else:
-                raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
-            
-            return answer
+                error_msg = f"Unsupported LLM provider: {settings.llm_provider}"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
 
         except Exception as e:
-            logger.error(f"Unexpected error during response generation: {e}")
-            return "Sorry, I encountered an error while processing your question. Please try again."
+            logger.error(f"Error during response generation: {e}", exc_info=True)
+            return f"Error generating response: {str(e)[:100]}"
 
     def _validate_response(self, response: str, query: str) -> dict:
         """

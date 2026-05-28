@@ -154,14 +154,31 @@ async def chat(request: ChatRequest):
         
         else:
             # Factual query - route to RAG pipeline
-            rag_pipeline = get_rag_pipeline()
-            rag_result = rag_pipeline.query(sanitized_query)
-            answer = rag_result.get("response", "")
-            source_url = None
-            
-            # Extract source URL from metadata if available
-            if rag_result.get("retrieved_chunks"):
-                source_url = rag_result["retrieved_chunks"][0].get("metadata", {}).get("source_url")
+            try:
+                rag_pipeline = get_rag_pipeline()
+                rag_result = rag_pipeline.query(sanitized_query)
+                answer = rag_result.get("response", "")
+                
+                if not answer:
+                    logger.warning(f"[{request_id}] RAG pipeline returned empty response")
+                    answer = "I couldn't generate a response to your question. Please try rewording it."
+                    rag_result = {"metadata": {"chunks_retrieved": 0}}
+                
+                source_url = None
+                
+                # Extract source URL from metadata if available
+                if rag_result.get("retrieved_chunks"):
+                    source_url = rag_result["retrieved_chunks"][0].get("metadata", {}).get("source_url")
+            except Exception as rag_error:
+                logger.error(f"[{request_id}] RAG pipeline error: {rag_error}", exc_info=True)
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "error": "RAGPipelineError",
+                        "message": f"Error processing query through RAG: {str(rag_error)}",
+                        "request_id": request_id,
+                    },
+                )
             
             # Step 4: Output guardrails validation
             is_valid, val_message, validated_response = compliance_pipeline.process_response(
