@@ -3,8 +3,12 @@ name: Refresh MF Corpus Data
 
 on:
   schedule:
-    # Run every Monday at 4:30 AM UTC (10:00 AM IST)
-    - cron: '30 4 * * 1'
+    # Run daily at 4:30 AM UTC (10:00 AM IST) for fresh NAV data
+    - cron: '30 4 * * *'
+    # Also run every 6 hours to catch intraday updates
+    - cron: '30 10 * * *'
+    - cron: '30 16 * * *'
+    - cron: '30 22 * * *'
   workflow_dispatch:  # Allow manual trigger as well
     inputs:
       force_refresh:
@@ -15,21 +19,37 @@ on:
 jobs:
   refresh-corpus:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper diff
       
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
           
       - name: Install dependencies
         run: |
+          # Upgrade pip first to avoid installation issues
+          python -m pip install --upgrade pip setuptools wheel
+          
+          # Install PyTorch first (required by sentence-transformers)
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          
+          # Install remaining dependencies
           pip install -r requirements.txt
+          
+          # Install Playwright browsers
           playwright install chromium
+          
+      - name: Verify installations
+        run: |
+          python -c "import sentence_transformers; print('sentence-transformers OK')"
+          python -c "import chromadb; print('chromadb OK')"
+          python -c "import groq; print('groq OK')"
           
       - name: Run data ingestion
         env:
@@ -38,21 +58,32 @@ jobs:
         run: |
           python scripts/run_phase_1_complete.py
           
-      - name: Check for changes
+      - name: Configure Git
         run: |
-          git diff --exit-code data/processed/ || echo "CHANGES_DETECTED=true" >> $GITHUB_ENV
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
           
-      - name: Create PR if significant changes
-        if: env.CHANGES_DETECTED == 'true' || github.event.inputs.force_refresh == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          commit-message: "🔄 Auto-refresh: Updated corpus data"
-          title: "🔄 Auto-refresh: Corpus data updated"
-          body: |
-            Automated corpus refresh detected. Please review changes:
-            - Source: groww.in
-            - Changes: See diff for details
-          branch: auto-refresh/corpus-update
-          add-paths: |
-            data/
+      - name: Check for changes
+        id: git-check
+        run: |
+          git add data/
+          git diff --staged --quiet && echo "has_changes=false" >> $GITHUB_OUTPUT || echo "has_changes=true" >> $GITHUB_OUTPUT
+          
+      - name: Commit and push if changes detected
+        if: steps.git-check.outputs.has_changes == 'true' || github.event.inputs.force_refresh == 'true'
+        run: |
+          git add data/
+          git commit -m "🔄 Auto-refresh: Updated corpus data $(date '+%Y-%m-%d %H:%M')" || echo "No changes to commit"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Data Refresh Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger:** ${{ github.event_name == 'schedule' && 'Scheduled' || 'Manual' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Changes detected:** ${{ steps.git-check.outputs.has_changes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force refresh:** ${{ github.event.inputs.force_refresh || 'false' }}" >> $GITHUB_STEP_SUMMARY
 
