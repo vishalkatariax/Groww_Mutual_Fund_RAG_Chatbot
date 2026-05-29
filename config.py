@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment / .env file."""
 
     # ── LLM Settings ──
-    llm_provider: str = Field(default="groq", description="groq | openai | ollama")
+    llm_provider: str = Field(default="groq", description="groq | openai")
     llm_model: str = Field(default="llama-3.1-8b-instant")
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     llm_max_tokens: int = Field(default=256, gt=0)
