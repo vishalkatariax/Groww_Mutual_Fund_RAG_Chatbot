@@ -5,7 +5,7 @@ on:
   schedule:
     # Run every Monday at 4:30 AM UTC (10:00 AM IST)
     - cron: '30 4 * * 1'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Allow manual trigger as well
     inputs:
       force_refresh:
         description: 'Force refresh even if no changes detected'
@@ -15,6 +15,8 @@ on:
 jobs:
   refresh-corpus:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - uses: actions/checkout@v4
