@@ -69,14 +69,25 @@ jobs:
           git add data/
           git diff --staged --quiet && echo "has_changes=false" >> $GITHUB_OUTPUT || echo "has_changes=true" >> $GITHUB_OUTPUT
           
-      - name: Commit and push if changes detected
+      - name: Create Pull Request with updated data
         if: steps.git-check.outputs.has_changes == 'true' || github.event.inputs.force_refresh == 'true'
-        run: |
-          git add data/
-          git commit -m "🔄 Auto-refresh: Updated corpus data $(date '+%Y-%m-%d %H:%M')" || echo "No changes to commit"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "🔄 Auto-refresh: Updated corpus data $(date '+%Y-%m-%d %H:%M')"
+          title: "🔄 Auto-refresh: Corpus data updated"
+          body: |
+            Automated corpus refresh detected changes:
+            - **Scraped date:** $(date '+%Y-%m-%d %H:%M')
+            - **Source:** groww.in (5 scheme pages)
+            - **Documents:** 5 HDFC Mutual Fund schemes
+            - **Chunks:** Created and embedded
+            
+            Please review and merge to update the FAQ database.
+          branch: auto-refresh/corpus-$(date '+%Y%m%d-%H%M')
+          base: main
+          add-paths: data/
+          delete-branch: true
           
       - name: Create summary
         if: always()
