@@ -28,8 +28,6 @@ app/frontend/.vite/
 
 # Data files
 data/raw/*.html
-data/processed/*.json
-data/chroma_db/
 
 # OS files
 .DS_Store
