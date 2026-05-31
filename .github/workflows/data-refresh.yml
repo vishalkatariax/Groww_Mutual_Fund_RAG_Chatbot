@@ -33,21 +33,13 @@ jobs:
           
       - name: Install dependencies
         run: |
-          # Upgrade pip first to avoid installation issues
           python -m pip install --upgrade pip setuptools wheel
-          
-          # Install PyTorch first (required by sentence-transformers)
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          
-          # Install remaining dependencies
           pip install -r requirements.txt
-          
-          # Install Playwright browsers
           playwright install chromium
           
       - name: Verify installations
         run: |
-          python -c "import sentence_transformers; print('sentence-transformers OK')"
+          python -c "import openai; print('openai OK')"
           python -c "import chromadb; print('chromadb OK')"
           python -c "import groq; print('groq OK')"
           
@@ -69,24 +61,28 @@ jobs:
           git add data/
           git diff --staged --quiet && echo "has_changes=false" >> $GITHUB_OUTPUT || echo "has_changes=true" >> $GITHUB_OUTPUT
           
-      - name: Get current timestamp
-        id: timestamp
-        run: echo "timestamp=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+      - name: Generate PR metadata
+        id: pr-metadata
+        run: |
+          BRANCH_NAME="auto-refresh/corpus-$(date '+%Y%m%d-%H%M')"
+          TIMESTAMP="$(date '+%Y-%m-%d %H:%M')"
+          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request with updated data
         if: steps.git-check.outputs.has_changes == 'true' || github.event.inputs.force_refresh == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "🔄 Auto-refresh: Updated corpus data ${{ steps.timestamp.outputs.timestamp }}"
-          title: "🔄 Auto-refresh: Corpus data updated ${{ steps.timestamp.outputs.timestamp }}"
+          commit-message: "🔄 Auto-refresh: Updated corpus data ${{ steps.pr-metadata.outputs.timestamp }}"
+          title: "🔄 Auto-refresh: Corpus data updated ${{ steps.pr-metadata.outputs.timestamp }}"
           body: |
             ## Automated Corpus Refresh
             
             The scheduled data refresh has completed successfully.
             
             ### Changes:
-            - **Scraped date:** ${{ steps.timestamp.outputs.timestamp }}
+            - **Scraped date:** ${{ steps.pr-metadata.outputs.timestamp }}
             - **Source:** groww.in (5 scheme pages)
             - **Documents:** 5 HDFC Mutual Fund schemes
             - **Chunks:** Created and embedded
@@ -96,7 +92,7 @@ jobs:
             
             ---
             *This PR was created automatically by the data refresh workflow.*
-          branch: auto-refresh/corpus-${{ steps.timestamp.outputs.timestamp }}
+          branch: ${{ steps.pr-metadata.outputs.name }}
           base: main
           add-paths: data/
           delete-branch: true

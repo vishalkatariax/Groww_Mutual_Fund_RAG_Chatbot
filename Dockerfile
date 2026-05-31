@@ -33,10 +33,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # ── Stage 3: Install Python dependencies ──────────────────────────────────
-FROM base AS py-builder
+FROM python:3.11-slim AS py-builder
 
 COPY requirements.txt .
+# Install PyTorch CPU-only first (sentence-transformers dependency, ~200MB lighter than GPU)
 RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r requirements.txt
 
 # ── Stage 4: Production image ──────────────────────────────────────────────
@@ -53,8 +55,33 @@ COPY config.py .
 # Copy built frontend into the location FastAPI expects
 COPY --from=frontend-builder /frontend/dist ./app/frontend/dist
 
-# Create data directories
-RUN mkdir -p data/raw data/processed data/chroma_db
+# Copy pre-built chunks (JSON, small — used to rebuild ChromaDB at build time)
+COPY data/processed/ ./data/processed/
+RUN mkdir -p data/raw data/chroma_db
+
+# Pre-download BGE model and build ChromaDB from chunks in one step
+RUN python -c "
+from sentence_transformers import SentenceTransformer
+print('Downloading BGE model...')
+SentenceTransformer('BAAI/bge-small-en-v1.5')
+print('BGE model cached')
+" && python -c "
+import sys, json
+sys.path.insert(0, '/app')
+from app.phase1.subphase_1_2_chunking_embedding.embedder import EmbeddingPipeline
+from app.phase1.subphase_1_2_chunking_embedding.vector_store import VectorStore
+chunks_path = '/app/data/processed/chunks.json'
+with open(chunks_path) as f:
+    chunks = json.load(f)
+vs = VectorStore()
+if vs.collection.count() == 0:
+    embedder = EmbeddingPipeline()
+    chunks = embedder.generate_embeddings(chunks)
+    vs.add_chunks(chunks)
+    print(f'Built ChromaDB: {vs.collection.count()} chunks')
+else:
+    print(f'ChromaDB already has {vs.collection.count()} chunks')
+"
 
 # Non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

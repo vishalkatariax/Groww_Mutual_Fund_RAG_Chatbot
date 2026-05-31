@@ -55,9 +55,8 @@ class RAGPipeline:
         else:
             raise ValueError(f"Unsupported LLM provider: {settings.llm_provider}")
         
-        # Initialize BGE embedding model (local, free)
-        # (Groq doesn't provide embedding services, so we use local BGE instead of OpenAI)
-        logger.info(f"Loading BGE embedding model for queries...")
+        # Initialize BGE embedding model (local, free — no API key, no rate limits)
+        logger.info("Loading BGE embedding model for queries...")
         self.embedding_model = SentenceTransformer("BAAI/bge-small-en-v1.5")
         self.embedding_dim = self.embedding_model.get_sentence_embedding_dimension()
         logger.info(f"Embeddings: BGE-Small-EN ({self.embedding_dim} dimensions, local)")
@@ -127,24 +126,14 @@ class RAGPipeline:
     def _embed_query(self, query: str) -> List[float]:
         """
         Embed the user query using local BGE model.
-        
-        Benefits:
-        - No API key required (free, local)
-        - No rate limits or latency
-        - Fast CPU inference
 
         Args:
             query: User's question.
 
         Returns:
-            Query embedding vector.
+            Query embedding vector (384 dimensions).
         """
-        # Encode query to embedding
-        embedding = self.embedding_model.encode(
-            query,
-            convert_to_numpy=True
-        )
-        
+        embedding = self.embedding_model.encode(query, convert_to_numpy=True)
         return embedding.tolist()
 
     def _extract_chunks(self, retrieval_results: dict) -> List[dict]:

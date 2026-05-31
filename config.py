@@ -76,7 +76,6 @@ class Settings(BaseSettings):
     # ── Embedding Settings ──
     embedding_model: str = Field(default="text-embedding-3-small")
     embedding_dimensions: int = Field(default=1536)
-
     # ── Vector Store Settings ──
     vector_store_path: str = Field(default=str(CHROMA_DB_DIR))
     vector_store_collection: str = Field(default="mf_faq_corpus")
