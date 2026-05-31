@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.api.routes import health, schemes
 import time
+import os
+from pathlib import Path
 
 # Create FastAPI app
 app = FastAPI(
@@ -15,21 +19,26 @@ app = FastAPI(
 # Store server start time
 SERVER_START_TIME = time.time()
 
-# CORS Middleware - Allow frontend origins
 # Railway will provide PORT env variable, default to 8000
-import os
 PORT = int(os.getenv("PORT", "8000"))
 
-# Allow localhost for dev, plus Vercel frontend
+# Build allowed origins list
+# FRONTEND_URL env var lets you pin a specific Vercel URL in Railway dashboard
+_frontend_url = os.getenv("FRONTEND_URL", "")
+_allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+]
+if _frontend_url:
+    _allowed_origins.append(_frontend_url)
+
+# FastAPI CORSMiddleware doesn't support wildcard subdomains, so we use
+# allow_origin_regex to cover all *.vercel.app deployments.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:3001",
-        "http://localhost:5173",
-        "https://*.vercel.app",  # Vercel preview deployments
-        os.getenv("FRONTEND_URL", "*")  # Configurable frontend URL
-    ],
+    allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,3 +75,18 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
+# ── Serve React frontend (production / Railway) ───────────────────────────
+# Mount static files AFTER all API routes so /api/* is never intercepted.
+# The built frontend lives at app/frontend/dist (built during Docker image build).
+FRONTEND_DIST = Path(__file__).resolve().parent / "frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+
+    # Catch-all: serve index.html for any non-API route (SPA routing)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        index = FRONTEND_DIST / "index.html"
+        return FileResponse(str(index))

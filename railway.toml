@@ -1,9 +1,22 @@
 [build]
-builder = "railpack"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/ping"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
 
-# Environment variables - Set these in Railway dashboard under Variables
-# GROQ_API_KEY: Your Groq API key (get from https://console.groq.com/keys)
-# OPENAI_API_KEY: (optional) Your OpenAI API key if using OpenAI provider
+# ── Required environment variables ────────────────────────────────────────
+# Set these in the Railway dashboard under Variables:
+#
+#   GROQ_API_KEY        Your Groq API key (https://console.groq.com/keys)
+#   LLM_PROVIDER        groq
+#   LLM_MODEL           llama-3.1-8b-instant
+#   EMBEDDING_MODEL     BAAI/bge-small-en-v1.5
+#   EMBEDDING_DIMENSIONS 384
+#   VECTOR_STORE_PATH   /app/data/chroma_db
+#   VECTOR_STORE_COLLECTION mf_faq_corpus
+#   RAG_TOP_K           3

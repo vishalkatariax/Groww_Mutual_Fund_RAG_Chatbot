@@ -58,13 +58,13 @@ export function useChat() {
         prev.map((msg) => (msg.id === loadingMessage.id ? botMessage : msg))
       );
     } catch (err: any) {
-      // Replace loading message with error
+      // Replace loading message with error — NOT a refusal, just a network/server error
       const errorMessage: Message = {
         id: loadingMessage.id,
         type: 'bot',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: 'Something went wrong. Please check your connection and try again.',
         timestamp: new Date(),
-        is_refusal: true,
+        is_refusal: false,
       };
 
       setMessages((prev) =>

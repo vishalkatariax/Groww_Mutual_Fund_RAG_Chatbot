@@ -8,6 +8,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://groww-mutual-fund-rag-chatbot.railway.app/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -29,9 +33,6 @@
       ]
     }
   ],
-  "env": {
-    "VITE_API_URL": "https://groww-mutual-fund-rag-chatbot.railway.app"
-  },
   "git": {
     "deploymentEnabled": {
       "main": true
