@@ -7,6 +7,7 @@ POST /api/v1/chat - Main chat endpoint for processing user queries
 import logging
 import time
 import uuid
+from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -50,6 +51,33 @@ def get_compliance_pipeline():
             logger.error(f"Failed to initialize compliance pipeline: {e}")
             raise
     return _compliance_pipeline
+
+
+def _extract_last_updated(retrieved_chunks: list[dict]) -> str:
+    """
+    Determine the latest available source update date from retrieved chunks.
+
+    If `scraped_date` metadata is present, return the newest date across chunks.
+    Otherwise fall back to today's date.
+    """
+    dates = []
+
+    for chunk in retrieved_chunks or []:
+        metadata = chunk.get("metadata", {})
+        scraped_date = metadata.get("scraped_date")
+
+        if isinstance(scraped_date, str):
+            try:
+                dates.append(datetime.fromisoformat(scraped_date).date())
+            except ValueError:
+                continue
+        elif isinstance(scraped_date, date):
+            dates.append(scraped_date)
+
+    if dates:
+        return max(dates).strftime("%Y-%m-%d")
+
+    return datetime.now().strftime("%Y-%m-%d")
 
 
 @router.post(
@@ -201,14 +229,11 @@ async def chat(request: ChatRequest):
             
             # Calculate response time
             response_time = (time.time() - start_time) * 1000
-            
-            from datetime import datetime
-            today = datetime.now().strftime("%Y-%m-%d")
-            
+
             return ChatResponse(
                 answer=answer,
                 source_url=source_url,
-                last_updated=today,
+                last_updated=_extract_last_updated(rag_result.get("retrieved_chunks", [])),
                 is_refusal=False,
                 query_type="factual",
                 response_time_ms=round(response_time, 2),

@@ -7,8 +7,11 @@ This avoids cold-start delays on Railway.
 """
 import json
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/app")
+# Support both Docker (/app) and local execution
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from sentence_transformers import SentenceTransformer
 
@@ -19,7 +22,7 @@ print("BGE model cached")
 from app.phase1.subphase_1_2_chunking_embedding.embedder import EmbeddingPipeline
 from app.phase1.subphase_1_2_chunking_embedding.vector_store import VectorStore
 
-chunks_path = "/app/data/processed/chunks.json"
+chunks_path = PROJECT_ROOT / "data" / "processed" / "chunks.json"
 with open(chunks_path) as f:
     chunks = json.load(f)
 
