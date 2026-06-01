@@ -61,59 +61,12 @@ jobs:
           git add data/
           git diff --staged --quiet && echo "has_changes=false" >> $GITHUB_OUTPUT || echo "has_changes=true" >> $GITHUB_OUTPUT
           
-      - name: Generate PR metadata
-        id: pr-metadata
-        run: |
-          BRANCH_NAME="auto-refresh/corpus-$(date '+%Y%m%d-%H%M')"
-          TIMESTAMP="$(date '+%Y-%m-%d %H:%M')"
-          echo "name=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
-
-      - name: Create Pull Request with updated data
+      - name: Commit and push changes directly
         if: steps.git-check.outputs.has_changes == 'true' || github.event.inputs.force_refresh == 'true'
-        id: cpr
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "🔄 Auto-refresh: Updated corpus data ${{ steps.pr-metadata.outputs.timestamp }}"
-          title: "🔄 Auto-refresh: Corpus data updated ${{ steps.pr-metadata.outputs.timestamp }}"
-          body: |
-            ## Automated Corpus Refresh
-            
-            The scheduled data refresh has completed successfully.
-            
-            ### Changes:
-            - **Scraped date:** ${{ steps.pr-metadata.outputs.timestamp }}
-            - **Source:** groww.in (5 scheme pages)
-            - **Documents:** 5 HDFC Mutual Fund schemes
-            - **Chunks:** Created and embedded
-            
-            ### Action Required:
-            This PR will be auto-merged after approval.
-            
-            ---
-            *This PR was created automatically by the data refresh workflow.*
-          branch: ${{ steps.pr-metadata.outputs.name }}
-          base: main
-          add-paths: data/
-          delete-branch: true
-          labels: automated-refresh
-          assignees: ${{ github.repository_owner }}
-
-      - name: Auto-approve PR
-        if: steps.cpr.outputs.pull-request-number != ''
-        uses: juliangruber/approve-pull-request-action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          number: ${{ steps.cpr.outputs.pull-request-number }}
-
-      - name: Auto-merge PR
-        if: steps.cpr.outputs.pull-request-number != ''
-        uses: pascalgn/automerge-action@v0.16.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_METHOD: "squash"
-          PULL_REQUEST: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          git add data/
+          git commit -m "🔄 Auto-refresh: Updated corpus data $(date '+%Y-%m-%d %H:%M')"
+          git push origin main
           
       - name: Create summary
         if: always()
