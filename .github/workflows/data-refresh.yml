@@ -71,6 +71,7 @@ jobs:
 
       - name: Create Pull Request with updated data
         if: steps.git-check.outputs.has_changes == 'true' || github.event.inputs.force_refresh == 'true'
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -88,7 +89,7 @@ jobs:
             - **Chunks:** Created and embedded
             
             ### Action Required:
-            Please review and merge this PR to update the FAQ database with the latest mutual fund data.
+            This PR will be auto-merged after approval.
             
             ---
             *This PR was created automatically by the data refresh workflow.*
@@ -98,6 +99,21 @@ jobs:
           delete-branch: true
           labels: automated-refresh
           assignees: ${{ github.repository_owner }}
+
+      - name: Auto-approve PR
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: juliangruber/approve-pull-request-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          number: ${{ steps.cpr.outputs.pull-request-number }}
+
+      - name: Auto-merge PR
+        if: steps.cpr.outputs.pull-request-number != ''
+        uses: pascalgn/automerge-action@v0.16.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: "squash"
+          PULL_REQUEST: ${{ steps.cpr.outputs.pull-request-number }}
           
       - name: Create summary
         if: always()
