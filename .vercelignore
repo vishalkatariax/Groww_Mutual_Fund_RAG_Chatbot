@@ -16,7 +16,7 @@ docs/
 *.pyc
 __pycache__/
 chroma_db/
-*.html
+data/raw/*.html
 *.md
 .env
 Dockerfile
