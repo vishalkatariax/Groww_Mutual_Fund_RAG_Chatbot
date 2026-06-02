@@ -1,0 +1,24 @@
+# Exclude everything except frontend
+.venv/
+data/
+app/phase1/
+app/phase2/
+app/phase3/
+app/phase4/
+app/api/
+app/models/
+app/frontend/node_modules/
+scripts/
+tests/
+docs/
+.github/
+*.py
+*.pyc
+__pycache__/
+chroma_db/
+*.html
+*.md
+.env
+Dockerfile
+docker-compose.yml
+requirements.txt
