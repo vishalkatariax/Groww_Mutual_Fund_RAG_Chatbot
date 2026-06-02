@@ -110,14 +110,14 @@ class VectorStore:
             metadata = self._sanitize_metadata(chunk.get("metadata", {}))
             metadatas.append(metadata)
 
-        # Add to collection in batches
+        # Add to collection in batches (use upsert to update existing documents)
         batch_size = 100
         total_added = 0
 
         for i in range(0, len(ids), batch_size):
             batch_end = min(i + batch_size, len(ids))
 
-            self.collection.add(
+            self.collection.upsert(
                 ids=ids[i:batch_end],
                 documents=documents[i:batch_end],
                 embeddings=embeddings[i:batch_end],

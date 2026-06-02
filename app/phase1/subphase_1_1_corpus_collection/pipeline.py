@@ -211,7 +211,7 @@ class IngestionPipeline:
             logger.warning("No documents to save")
             return
 
-        # Save as JSON
+        # Save as JSON (to processed dir - corpus_documents.json)
         json_path = PROCESSED_DATA_DIR / "corpus_documents.json"
         documents_json = [doc.model_dump(mode="json") for doc in self.documents]
 
@@ -223,6 +223,13 @@ class IngestionPipeline:
             json.dump(documents_json, f, indent=2, ensure_ascii=False)
 
         logger.info(f"✓ Saved JSON: {json_path}")
+
+        # Also save to raw dir for Phase 1.2 compatibility (ingested_documents.json)
+        raw_json_path = RAW_DATA_DIR / "ingested_documents.json"
+        with open(raw_json_path, "w", encoding="utf-8") as f:
+            json.dump(documents_json, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"✓ Saved JSON: {raw_json_path}")
 
         # Save raw HTML files for each document
         raw_html_dir = RAW_DATA_DIR / "html"
