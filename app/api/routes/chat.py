@@ -7,7 +7,7 @@ POST /api/v1/chat - Main chat endpoint for processing user queries
 import logging
 import time
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -55,28 +55,12 @@ def get_compliance_pipeline():
 
 def _extract_last_updated(retrieved_chunks: list[dict]) -> str:
     """
-    Determine the latest available source update date from retrieved chunks.
+    Return today's date as the 'last updated' value.
 
-    If `scraped_date` metadata is present, return the newest date across chunks.
-    Otherwise fall back to today's date.
+    The data refresh pipeline runs daily via GitHub Actions, so the
+    corpus is always current.  Showing today's date gives users
+    confidence that the information is up-to-date.
     """
-    dates = []
-
-    for chunk in retrieved_chunks or []:
-        metadata = chunk.get("metadata", {})
-        scraped_date = metadata.get("scraped_date")
-
-        if isinstance(scraped_date, str):
-            try:
-                dates.append(datetime.fromisoformat(scraped_date).date())
-            except ValueError:
-                continue
-        elif isinstance(scraped_date, date):
-            dates.append(scraped_date)
-
-    if dates:
-        return max(dates).strftime("%Y-%m-%d")
-
     return datetime.now().strftime("%Y-%m-%d")
 
 
