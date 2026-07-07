@@ -16,7 +16,7 @@ app = FastAPI(
 # Store server start time
 SERVER_START_TIME = time.time()
 
-# Railway will provide PORT env variable, default to 8000
+# Render will provide PORT env variable, default to 8000
 PORT = int(os.getenv("PORT", "8000"))
 
 # Build allowed origins list
@@ -32,7 +32,7 @@ if _frontend_url:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.onrender\.com)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

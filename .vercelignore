@@ -1,24 +1,25 @@
-# Exclude everything except frontend
+# ── Vercel deploys only the frontend (rootDirectory: app/frontend) ──
+# Ignore heavy backend / Python files from the upload
+
 .venv/
 data/
-app/phase1/
-app/phase2/
-app/phase3/
-app/phase4/
-app/api/
-app/models/
-app/frontend/node_modules/
 scripts/
 tests/
 docs/
 .github/
+__pycache__/
 *.py
 *.pyc
-__pycache__/
-chroma_db/
-data/raw/*.html
 *.md
 .env
 Dockerfile
 docker-compose.yml
 requirements.txt
+render.yaml
+railway.toml
+nixpacks.json
+
+# Frontend build artifacts (re-generated during build)
+app/frontend/node_modules/
+app/frontend/dist/
+

@@ -1,0 +1,43 @@
+# ──────────────────────────────────────────────────────────────────────
+# Render Deployment Configuration — MF FAQ Assistant (Backend)
+# ──────────────────────────────────────────────────────────────────────
+# Docs: https://render.com/docs/render-yaml-spec
+
+services:
+  - type: web
+    name: mf-faq-assistant-backend
+    runtime: python
+    region: oregon          # Change to your preferred region
+    plan: free              # Use "starter" or higher for production
+
+    # ── Build ──
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+
+    # ── Start ──
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    # ── Health Check ──
+    healthCheckPath: /ping
+
+    # ── Environment Variables ──
+    # Set these in the Render dashboard → Environment section
+    envVars:
+      - key: LLM_PROVIDER
+        value: groq
+      - key: LLM_MODEL
+        value: llama-3.1-8b-instant
+      - key: LLM_TEMPERATURE
+        value: "0.0"
+      - key: LLM_MAX_TOKENS
+        value: "256"
+      - key: GROQ_API_KEY
+        sync: false          # Secret — set manually in Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false          # Secret — set manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+      # URL of your Vercel frontend (set after deploying frontend)
+      - key: FRONTEND_URL
+        sync: false          # e.g. https://your-app.vercel.app
