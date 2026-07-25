@@ -1,47 +1,41 @@
 # Deployment Guide
 
-## Backend - Railway
+## Backend - Render
 
 ### Setup
 
-1. **Create Railway Account**
-   - Go to [railway.app](https://railway.app)
+1. **Create Render Account**
+   - Go to [render.com](https://render.com)
    - Sign up with GitHub
 
 2. **Deploy Backend**
-   ```bash
-   # Navigate to project root
-   # cd /path/to/project-root
-   
-   # Install Railway CLI
-   npm install -g @railway/cli
-   
-   # Login
-   railway login
-   
-   # Create new project
-   railway init
-   
-   # Link to GitHub repo
-   railway connect <github-repo-url>
-   ```
+   - Go to Render Dashboard → New → Web Service
+   - Connect your GitHub repository: `vishalkatariax/Groww_Mutual_Fund_RAG_Chatbot`
+   - Select branch: `main`
+   - Runtime: `Python 3`
+   - Build Command: `pip install --upgrade pip && pip install -r requirements.txt`
+   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 3. **Set Environment Variables**
    
-   In Railway dashboard, add these variables:
+   In Render dashboard → Environment section, add these variables:
    
    | Variable | Value | Description |
    |----------|-------|-------------|
    | `GROQ_API_KEY` | `your_groq_api_key` | Groq API key for LLM |
    | `OPENAI_API_KEY` | `optional` | Optional for dual-client |
    | `FRONTEND_URL` | `https://your-frontend.vercel.app` | Vercel frontend URL |
+   | `LLM_PROVIDER` | `groq` | LLM provider (groq or openai) |
+   | `LLM_MODEL` | `llama-3.1-8b-instant` | Model to use |
+   | `LLM_TEMPERATURE` | `0.0` | Temperature for generation |
+   | `LLM_MAX_TOKENS` | `256` | Max tokens in response |
 
 4. **Deploy**
-   - Railway auto-deploys on push to main branch
-   - Or manually: `railway up`
+   - Render auto-deploys on push to main branch
+   - Or manually trigger from Render dashboard
 
 5. **Get Backend URL**
-   - Railway provides a URL like: `https://groww-mutual-fund-rag-chatbot.railway.app`
+   - Render provides a URL like: `https://mf-faq-assistant-backend.onrender.com`
    - Note this URL for Vercel frontend config
 
 ---
@@ -75,51 +69,28 @@
    
    | Variable | Value | Description |
    |----------|-------|-------------|
-   | `VITE_API_URL` | `https://your-railway-backend.railway.app` | Railway backend URL |
+   | `VITE_API_URL` | `https://your-render-backend.onrender.com` | Render backend URL |
 
 4. **Update Backend CORS**
    
-   After getting Vercel URL, update Railway env:
+   After getting Vercel URL, update Render env:
    ```
    FRONTEND_URL=https://your-frontend.vercel.app
    ```
 
 5. **Custom Domain (Optional)**
    - Vercel: Settings → Domains → Add custom domain
-   - Railway: Settings → Networking → Add custom domain
+   - Render: Settings → Custom Domains → Add custom domain
 
 ---
 
 ## GitHub Actions (Auto-Deploy)
 
-### Backend (Railway)
+### Backend (Render)
 
-Create `.github/workflows/deploy-backend.yml`:
+Render automatically deploys on push to main branch when connected via GitHub. No additional GitHub Actions workflow is needed.
 
-```yaml
-name: Deploy Backend to Railway
-
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'config.py'
-      - 'requirements.txt'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Deploy to Railway
-        uses: railway/action-deploy@v1
-        with:
-          args: up
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-```
+If you need custom deployment logic, you can use Render's native GitHub integration or create a workflow that triggers Render's API.
 
 ### Frontend (Vercel)
 
@@ -143,9 +114,8 @@ For production, set up GitHub Actions to refresh data:
 2. **Add Workflow** (already in `.github/workflows/`)
 
 3. **Manual Refresh**
-   ```bash
-   railway run python scripts/run_phase_1_complete.py
-   ```
+   - Run the refresh script locally and push changes to GitHub
+   - Render will auto-deploy the updated data
 
 ---
 
@@ -153,25 +123,19 @@ For production, set up GitHub Actions to refresh data:
 
 After deployment:
 
-- **Backend (Railway)**: `https://groww-mutual-fund-rag-chatbot.railway.app`
+- **Backend (Render)**: `https://mf-faq-assistant-backend.onrender.com`
 - **Frontend (Vercel)**: `https://groww-mutual-fund-rag-chatbot.vercel.app`
-- **API Docs**: `https://groww-mutual-fund-rag-chatbot.railway.app/docs`
+- **API Docs**: `https://mf-faq-assistant-backend.onrender.com/docs`
 
 ---
 
 ## Troubleshooting
 
 ### Backend Issues
-```bash
-# Check logs
-railway logs
-
-# Open shell
-railway shell
-
-# Check env vars
-railway variables
-```
+- Check logs in Render Dashboard → Logs tab
+- View deployment events in Render Dashboard → Events tab
+- SSH into the container: Render Dashboard → Shell (if available on your plan)
+- Verify environment variables in Render Dashboard → Environment section
 
 ### Frontend Issues
 ```bash
@@ -184,6 +148,6 @@ vercel env pull
 ```
 
 ### CORS Errors
-1. Verify `FRONTEND_URL` in Railway matches Vercel URL exactly
+1. Verify `FRONTEND_URL` in Render matches Vercel URL exactly
 2. Include protocol (https://)
 3. No trailing slash
