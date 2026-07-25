@@ -1,38 +1,18 @@
-# ──────────────────────────────────────────────────────────────────────
 # Render Deployment Configuration — MF FAQ Assistant (Backend)
-# ──────────────────────────────────────────────────────────────────────
 # Docs: https://render.com/docs/render-yaml-spec
-#
-# Usage:
-# 1. Commit this file to your repository
-# 2. In Render Dashboard → New → Blueprint → Select this repo
-# 3. Render will automatically create the web service with this configuration
-# 4. Set sensitive environment variables (GROQ_API_KEY, OPENAI_API_KEY, FRONTEND_URL)
-#    in the Render dashboard after deployment
 
 services:
   - type: web
     name: mf-faq-assistant-backend
     runtime: python
-    region: oregon          # Options: oregon, frankfurt, singapore, ohio
-    plan: free              # Options: free, starter, standard, pro (for production)
+    region: oregon
+    plan: free
+    rootDir: .
     
-    # ── Build Configuration ──
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-    
-    # ── Start Configuration ──
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    
-    # ── Health Check ──
     healthCheckPath: /ping
     
-    # ── Auto-Deploy ──
-    # Render automatically deploys on push to main branch when connected via GitHub
-    
-    # ── Environment Variables ──
-    # Non-sensitive variables (can be set here)
     envVars:
       - key: LLM_PROVIDER
         value: groq
@@ -44,30 +24,9 @@ services:
         value: "256"
       - key: PYTHON_VERSION
         value: "3.11.0"
-      
-      # Sensitive variables (sync: false - must be set manually in Render dashboard)
       - key: GROQ_API_KEY
         sync: false
-        generateValue: false  # Do not auto-generate
-      
       - key: OPENAI_API_KEY
         sync: false
-        generateValue: false  # Do not auto-generate
-      
       - key: FRONTEND_URL
         sync: false
-        generateValue: false  # Set after deploying frontend to Vercel
-
-# ──────────────────────────────────────────────────────────────────────
-# Notes:
-# ──────────────────────────────────────────────────────────────────────
-# 
-# Required Environment Variables (set in Render dashboard):
-#   - GROQ_API_KEY: Get from https://console.groq.com
-#   - FRONTEND_URL: Your Vercel frontend URL (e.g., https://your-app.vercel.app)
-#
-# Optional Environment Variables:
-#   - OPENAI_API_KEY: For dual-client setup (get from https://platform.openai.com)
-#
-# For detailed setup instructions, see: docs/RENDER_ENV_VARS.md
-#
