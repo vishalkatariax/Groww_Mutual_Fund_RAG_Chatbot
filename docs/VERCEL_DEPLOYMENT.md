@@ -125,21 +125,21 @@ Vercel rewrites API requests to the Render backend:
 
 | Variable | Value | Where to Set |
 |----------|-------|--------------|
-| `VITE_API_URL` | `https://your-render-backend.onrender.com` | Vercel Dashboard → Environment Variables |
+| `VITE_API_URL` | `https://groww-mutual-fund-rag-chatbot.onrender.com` | Vercel Dashboard → Environment Variables |
 
 ### How to Get Backend URL
 
 1. Deploy your backend to Render first
-2. Copy the Render URL (e.g., `https://mf-faq-assistant-backend.onrender.com`)
+2. Copy the Render URL (e.g., `https://groww-mutual-fund-rag-chatbot.onrender.com`)
 3. Set it as `VITE_API_URL` in Vercel
 
 ## Deployment URLs
 
 After successful deployment:
 
-- **Frontend (Vercel)**: `https://your-project.vercel.app`
-- **Backend (Render)**: `https://mf-faq-assistant-backend.onrender.com`
-- **API Docs**: `https://mf-faq-assistant-backend.onrender.com/docs`
+- **Frontend (Vercel)**: `https://groww-mutual-fund-rag-chatbot.vercel.app`
+- **Backend (Render)**: `https://groww-mutual-fund-rag-chatbot.onrender.com`
+- **API Docs**: `https://groww-mutual-fund-rag-chatbot.onrender.com/docs`
 
 ## Troubleshooting
 

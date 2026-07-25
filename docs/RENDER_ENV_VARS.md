@@ -20,6 +20,7 @@ These environment variables must be configured in your Render web service dashbo
 | Variable | Type | Description | Example Value |
 |----------|------|-------------|---------------|
 | `OPENAI_API_KEY` | Secret | OpenAI API key (for dual-client setup) | `sk-...` |
+| `HF_TOKEN` | Secret | Hugging Face token for faster model downloads | `hf_...` |
 | `PYTHON_VERSION` | String | Python version (if not using default) | `3.11.0` |
 
 ## How to Set Environment Variables in Render
@@ -44,6 +45,13 @@ These environment variables must be configured in your Render web service dashbo
 2. Navigate to API Keys section
 3. Create a new API key
 4. Copy the key and add it to Render as `OPENAI_API_KEY`
+
+### Hugging Face Token (Optional)
+1. Go to [huggingface.co](https://huggingface.co)
+2. Navigate to Settings → Access Tokens
+3. Create a new token (read permission is sufficient)
+4. Copy the token and add it to Render as `HF_TOKEN`
+5. This eliminates the "unauthenticated requests to HF Hub" warning and enables faster downloads
 
 ## Variable Explanations
 

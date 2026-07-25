@@ -35,7 +35,7 @@
    - Or manually trigger from Render dashboard
 
 5. **Get Backend URL**
-   - Render provides a URL like: `https://mf-faq-assistant-backend.onrender.com`
+   - Render provides a URL like: `https://groww-mutual-fund-rag-chatbot.onrender.com`
    - Note this URL for Vercel frontend config
 
 ---
@@ -69,7 +69,7 @@
    
    | Variable | Value | Description |
    |----------|-------|-------------|
-   | `VITE_API_URL` | `https://your-render-backend.onrender.com` | Render backend URL |
+   | `VITE_API_URL` | `https://groww-mutual-fund-rag-chatbot.onrender.com` | Render backend URL |
 
 4. **Update Backend CORS**
    
@@ -123,9 +123,9 @@ For production, set up GitHub Actions to refresh data:
 
 After deployment:
 
-- **Backend (Render)**: `https://mf-faq-assistant-backend.onrender.com`
+- **Backend (Render)**: `https://groww-mutual-fund-rag-chatbot.onrender.com`
 - **Frontend (Vercel)**: `https://groww-mutual-fund-rag-chatbot.vercel.app`
-- **API Docs**: `https://mf-faq-assistant-backend.onrender.com/docs`
+- **API Docs**: `https://groww-mutual-fund-rag-chatbot.onrender.com/docs`
 
 ---
 

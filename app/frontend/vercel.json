@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://mf-faq-assistant-backend.onrender.com/api/$1"
+      "destination": "https://groww-mutual-fund-rag-chatbot.onrender.com/api/$1"
     }
   ],
   "headers": [
