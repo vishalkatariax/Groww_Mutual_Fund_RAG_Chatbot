@@ -32,10 +32,7 @@ This project uses Vercel for frontend deployment. The backend is deployed on Ren
    # Login
    vercel login
    
-   # Navigate to frontend directory
-   cd app/frontend
-   
-   # Deploy
+   # Deploy from project root (vercel.json specifies rootDirectory)
    vercel
    ```
 
