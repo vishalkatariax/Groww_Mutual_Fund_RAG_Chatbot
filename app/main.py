@@ -47,6 +47,7 @@ app.include_router(schemes.router)
 
 # Root endpoint
 @app.get("/")
+@app.head("/")
 async def root():
     return {
         "message": "MF FAQ Assistant API",
@@ -57,6 +58,7 @@ async def root():
 
 # Health check (simple)
 @app.get("/ping")
+@app.head("/ping")
 async def ping():
     return {"status": "ok"}
 
