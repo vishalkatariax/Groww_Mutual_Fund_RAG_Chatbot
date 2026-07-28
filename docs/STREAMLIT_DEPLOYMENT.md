@@ -28,14 +28,15 @@ Streamlit Cloud is the easiest way to deploy your Streamlit app.
    
    In Streamlit Cloud dashboard → Settings → Secrets, add:
    
-   | Variable | Value | Description |
-   |----------|-------|-------------|
-   | `GROQ_API_KEY` | `your_groq_api_key` | Groq API key for LLM |
-   | `OPENAI_API_KEY` | `optional` | Optional for dual-client |
-   | `LLM_PROVIDER` | `groq` | LLM provider |
-   | `LLM_MODEL` | `llama-3.1-8b-instant` | Model to use |
-   | `LLM_TEMPERATURE` | `0.0` | Temperature for generation |
-   | `LLM_MAX_TOKENS` | `256` | Max tokens in response |
+   ```toml
+   GROQ_API_KEY = "your_groq_api_key_here"
+   LLM_PROVIDER = "groq"
+   LLM_MODEL = "llama-3.1-8b-instant"
+   LLM_TEMPERATURE = "0.0"
+   LLM_MAX_TOKENS = "256"
+   ```
+   
+   Or use the provided `.streamlit/secrets.toml.example` as a reference.
 
 4. **Wait for Deployment**
    - Streamlit Cloud will automatically build and deploy
