@@ -124,7 +124,7 @@ For production, set up GitHub Actions to refresh data:
 After deployment:
 
 - **Backend (Render)**: `https://groww-mutual-fund-rag-chatbot.onrender.com`
-- **Frontend (Vercel)**: `https://groww-mutual-fund-rag-chatbot.vercel.app`
+- **Frontend (Vercel)**: `https://groww-mutual-fund-rag-chatbot-ne6prvmfj.vercel.app`
 - **API Docs**: `https://groww-mutual-fund-rag-chatbot.onrender.com/docs`
 
 ---

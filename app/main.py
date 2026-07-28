@@ -25,6 +25,7 @@ _allowed_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:5173",
+    "https://groww-mutual-fund-rag-chatbot-ne6prvmfj.vercel.app",  # Current Vercel deployment
 ]
 if _frontend_url:
     _allowed_origins.append(_frontend_url)
@@ -32,7 +33,7 @@ if _frontend_url:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.onrender\.com)",
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
