@@ -2,6 +2,9 @@
 # MF FAQ Assistant — Python Dependencies
 # ──────────────────────────────────────────────────────────────────────
 
+# Streamlit (for deployment)
+streamlit>=1.28.0
+
 # Core
 pydantic>=2.0
 pydantic-settings>=2.0

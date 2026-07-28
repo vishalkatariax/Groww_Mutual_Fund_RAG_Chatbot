@@ -1,0 +1,4 @@
+# System dependencies for Streamlit Cloud deployment
+# These are required for Playwright and other system-level dependencies
+
+chromium
