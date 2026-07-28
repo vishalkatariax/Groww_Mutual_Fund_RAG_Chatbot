@@ -3,9 +3,33 @@ Streamlit Application for MF FAQ Assistant
 Combines frontend UI and backend RAG pipeline in a single Streamlit app
 """
 
+import os
 import streamlit as st
 import time
 from datetime import datetime
+
+# Check for required environment variables
+if not os.getenv("GROQ_API_KEY"):
+    st.error("❌ **GROQ_API_KEY is not set**")
+    st.info("""
+    **To fix this issue:**
+    
+    1. Go to your Streamlit Cloud dashboard
+    2. Navigate to your app → Settings → Secrets
+    3. Add the following secret:
+       - **Key**: `GROQ_API_KEY`
+       - **Value**: Your Groq API key from [console.groq.com/keys](https://console.groq.com/keys)
+    
+    4. Optional: Add these additional secrets for better performance:
+       - `LLM_PROVIDER=groq`
+       - `LLM_MODEL=llama-3.1-8b-instant`
+       - `LLM_TEMPERATURE=0.0`
+       - `LLM_MAX_TOKENS=256`
+    
+    5. Save and redeploy your app
+    """)
+    st.stop()
+
 from app.phase1.subphase_1_3_rag_setup.rag_pipeline import RAGPipeline
 from app.phase1.subphase_1_4_compliance.compliance_pipeline import CompliancePipeline
 from app.core.intent_classifier import intent_classifier
