@@ -36,6 +36,7 @@ from app.core.intent_classifier import intent_classifier
 from app.core.refusal_handler import refusal_handler
 from app.core.response_validator import response_validator
 from config import settings
+from app.phase1.subphase_1_2_chunking_embedding.vector_store import VectorStore
 
 # Page configuration
 st.set_page_config(
@@ -89,6 +90,43 @@ if 'rag_pipeline' not in st.session_state:
     st.session_state.rag_pipeline = None
 if 'compliance_pipeline' not in st.session_state:
     st.session_state.compliance_pipeline = None
+if 'vector_store_checked' not in st.session_state:
+    st.session_state.vector_store_checked = False
+
+# Check vector store status
+if not st.session_state.vector_store_checked:
+    try:
+        vs = VectorStore()
+        stats = vs.get_stats()
+        chunk_count = stats.get('total_chunks', 0)
+        
+        if chunk_count == 0:
+            st.warning("⚠️ **Vector store is empty**")
+            st.info("""
+            **The vector store needs to be populated with data.**
+            
+            **To fix this locally:**
+            ```bash
+            python scripts/run_phase_1_complete.py
+            ```
+            
+            **This will:**
+            1. Scrape data from Groww
+            2. Process and chunk documents
+            3. Generate embeddings
+            4. Store in ChromaDB
+            
+            **For Streamlit Cloud:**
+            The data files should be committed to the repository. If they're missing,
+            you need to run the ingestion pipeline locally and commit the `data/` directory.
+            """)
+        else:
+            st.success(f"✅ Vector store loaded: {chunk_count} chunks")
+        
+        st.session_state.vector_store_checked = True
+    except Exception as e:
+        st.error(f"❌ Error checking vector store: {str(e)}")
+        st.session_state.vector_store_checked = True
 
 # Header
 st.markdown("""
