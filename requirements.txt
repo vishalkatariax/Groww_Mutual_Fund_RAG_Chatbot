@@ -20,6 +20,8 @@ lxml>=5.0.0
 # Vector Store
 chromadb>=0.4.0
 sentence-transformers>=2.2.2
+torch>=2.0.0
+torchvision>=0.15.0
 
 # LLM (Phase 3+)
 groq>=0.9.0
